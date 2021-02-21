@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <category label="Általános">
+        <setting label="Videó minősége" type="enum" id="autopick" values="Választható|Legjobb" default="0"/>
+    </category>
+</settings>

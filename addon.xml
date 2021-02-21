@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.video.tv2play" name="TV2 Play" version="0.0.1" provider-name="vargalex">
+	<requires>
+		<import addon="xbmc.python" version="2.1.0"/>
+	</requires>
+	<extension point="xbmc.python.pluginsource" library="default.py">
+		<provides>video</provides>
+	</extension>
+	<extension point="xbmc.addon.metadata">
+		<summary lang="en">TV2 Play</summary>
+		<language>hu</language>
+		<description lang="en">TV2 Play kiegészítővel egyszerűen férhetsz hozzá A TV2 csoport (https://tv2play.hu) csatornáinak weboldalán található tartalmakhoz.</description>
+		<platform>all</platform>
+	</extension>
+</addon>
