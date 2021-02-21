@@ -40,16 +40,26 @@ def musorok():
     endDirectory(type="movies")
 
 
-def apiSearch():
+def apiSearchSeason(season):
     r = client.request("https://tv2play.hu/api/search/%s" % param)
     data = json.loads(r)
     ribbons = []
-    for tab in data["pages"][0]["tabs"]:
+    index = 0
+    plot = ''
+    thumb = ''
+    if "seasonNumbers" in data and len(data["seasonNumbers"])>0:
+        for page in data["pages"]:
+            if page["seasonNr"] == season:
+                break
+            index+=1
+    for tab in data["pages"][index]["tabs"]:
         if tab["tabType"] == "RIBBON":
             ribbons += tab["ribbonIds"]
         if tab["tabType"] == 'SHOW_INFO':
-            plot = tab["showData"]["description"].encode('utf-8')
-            thumb = "https://tv2play.hu/%s" % tab["showData"]["imageUrl"].encode('utf-8').replace("https://tv2play.hu/", "")
+            if plot == '' and "description" in tab["showData"]:
+                plot = tab["showData"]["description"].encode('utf-8')
+            if thumb == '' and "imageUrl" in tab["showData"]:
+                thumb = "https://tv2play.hu/%s" % tab["showData"]["imageUrl"].encode('utf-8').replace("https://tv2play.hu/", "")
     for ribbon in ribbons:
         r = client.request("https://tv2play.hu/api/ribbons/%s" % ribbon)
         if r:
@@ -60,6 +70,21 @@ def apiSearch():
                             "DefaultFolder.png", 
                             meta={'title': data["title"].encode("utf-8"), 'plot': plot})
     endDirectory(type="movies")	
+
+def apiSearch():
+    r = client.request("https://tv2play.hu/api/search/%s" % param)
+    data = json.loads(r)
+    if "seasonNumbers" in data and len(data["seasonNumbers"])>0:
+        for season in data["seasonNumbers"]:
+            addDirectoryItem("%s. évad" % season, 
+                            "apisearchseason&param=%s&page=%s" % (param, season), 
+                            '', 
+                            "DefaultFolder.png", 
+                            meta={'title': "%s. évad" % season})
+        endDirectory(type="movies")
+    else:
+        apiSearchSeason(0)
+
 
 def apiRibbons():
     r = client.request("https://tv2play.hu/api/ribbons/%s/%s" % (param, page))
@@ -154,7 +179,7 @@ def doSearch():
         functionIdx = page
         keyword = urllib.quote_plus(search_text)
         page = '1'
-        global mode2Sub
+        global mode2Sub 
         mode2Sub[int(functionIdx)]()
 	
 params = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
@@ -171,6 +196,8 @@ elif action == 'musorok':
     musorok()
 elif action == 'apisearch':
     apiSearch()
+elif action == 'apisearchseason':
+    apiSearchSeason(int(page))
 elif action == 'apiribbons':
     apiRibbons()
 elif action == 'playvideo':
