@@ -43,9 +43,10 @@ def musorok():
 def apiSearch():
     r = client.request("https://tv2play.hu/api/search/%s" % param)
     data = json.loads(r)
+    ribbons = []
     for tab in data["pages"][0]["tabs"]:
         if tab["tabType"] == "RIBBON":
-            ribbons = tab["ribbonIds"]
+            ribbons += tab["ribbonIds"]
         if tab["tabType"] == 'SHOW_INFO':
             plot = tab["showData"]["description"].encode('utf-8')
             thumb = "https://tv2play.hu/%s" % tab["showData"]["imageUrl"].encode('utf-8').replace("https://tv2play.hu/", "")
