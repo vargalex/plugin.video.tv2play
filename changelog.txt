@@ -1,3 +1,8 @@
+V1.0.0
+- Csatornák kezelése
+- Csatorna logók beállítása
+- Média hosszának beállítása
+
 V0.0.3
 - Évadok kezelése
 

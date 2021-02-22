@@ -4,10 +4,20 @@ from resources.lib import client, control
 
 sysaddon = sys.argv[0] ; syshandle = int(sys.argv[1])
 addonFanart = xbmcaddon.Addon().getAddonInfo('fanart')
+artPath = control.artPath()
 
 def main_folders():
-    addDirectoryItem("Műsorok", "musorok", None, None)
-    endDirectory()
+    addDirectoryItem("Műsorok", "musorok", os.path.join(artPath, "tv2play.png"), None)
+    r = client.request("https://tv2play.hu/api/channels")
+    channels = sorted(json.loads(r), key=lambda k:k["id"])
+    for channel in channels:
+        if channel["slug"] != "spiler2":
+            addDirectoryItem(channel["name"], 
+                            "apisearch&param=%s" % channel["slug"], 
+                            os.path.join(artPath, "%s%s" % (channel["slug"], ".png")), 
+                            os.path.join(artPath, "%s%s" % (channel["slug"], ".png")),
+                            meta={'title': channel["name"]})
+    endDirectory(type="")
     return
 
 def musorok():
@@ -47,19 +57,22 @@ def apiSearchSeason(season):
     index = 0
     plot = ''
     thumb = ''
-    if "seasonNumbers" in data and len(data["seasonNumbers"])>0:
-        for page in data["pages"]:
-            if page["seasonNr"] == season:
-                break
-            index+=1
-    for tab in data["pages"][index]["tabs"]:
-        if tab["tabType"] == "RIBBON":
-            ribbons += tab["ribbonIds"]
-        if tab["tabType"] == 'SHOW_INFO':
-            if plot == '' and "description" in tab["showData"]:
-                plot = tab["showData"]["description"].encode('utf-8')
-            if thumb == '' and "imageUrl" in tab["showData"]:
-                thumb = "https://tv2play.hu/%s" % tab["showData"]["imageUrl"].encode('utf-8').replace("https://tv2play.hu/", "")
+    if data["contentType"] == "channel":
+        ribbons = data["ribbonIds"]
+    else:
+        if "seasonNumbers" in data and len(data["seasonNumbers"])>0:
+            for page in data["pages"]:
+                if page["seasonNr"] == season:
+                    break
+                index+=1
+        for tab in data["pages"][index]["tabs"]:
+            if tab["tabType"] == "RIBBON":
+                ribbons += tab["ribbonIds"]
+            if tab["tabType"] == 'SHOW_INFO':
+                if plot == '' and "description" in tab["showData"]:
+                    plot = tab["showData"]["description"].encode('utf-8')
+                if thumb == '' and "imageUrl" in tab["showData"]:
+                    thumb = "https://tv2play.hu/%s" % tab["showData"]["imageUrl"].encode('utf-8').replace("https://tv2play.hu/", "")
     for ribbon in ribbons:
         r = client.request("https://tv2play.hu/api/ribbons/%s" % ribbon)
         if r:
@@ -92,11 +105,19 @@ def apiRibbons():
     for card in data["cards"]:
         thumb = "https://tv2play.hu/%s" % card["imageUrl"].encode('utf-8').replace("https://tv2play.hu/", "")
         title = card["title"].encode('utf-8')
-        addDirectoryItem(title, 
-                        "playvideo&param=%s" % card["slug"], 
-                        thumb, 
-                        "DefaultFolder.png", 
-                        meta={'title': title}, isFolder=False)
+        if "contentLength" in card:
+            addDirectoryItem(title, 
+                            "playvideo&param=%s" % card["slug"], 
+                            thumb, 
+                            "DefaultFolder.png", 
+                            meta={'title': title, 'duration': int(card["contentLength"])}, isFolder=False)
+        else:
+            if card["cardType"] != "ARTICLE":
+                addDirectoryItem(title, 
+                                "apisearch&param=%s" % urllib.quote_plus(card["slug"]), 
+                                thumb, 
+                                "DefaultFolder.png", 
+                                meta={'title': title, 'plot': card["lead"].encode('utf-8') if "lead" in card else ''})           
     r = client.request("https://tv2play.hu/api/ribbons/%s/%d" % (param, int(page)+1))
     if r != None:
         addDirectoryItem(u'[I]K\u00F6vetkez\u0151 oldal >>[/I]', 'apiribbons&param=%s&page=%d' % (param, int(page)+1), '', 'DefaultFolder.png')
@@ -149,7 +170,7 @@ def addDirectoryItem(name, query, thumb, icon, context=None, queue=False, isActi
     if not context == None: cm.append((context[0].encode('utf-8'), 'RunPlugin(%s?action=%s)' % (sysaddon, context[1])))
     item = xbmcgui.ListItem(label=name)
     item.addContextMenuItems(cm)
-    item.setArt({'icon': thumb, 'thumb': thumb, 'poster': thumb})
+    item.setArt({'icon': icon, 'thumb': thumb, 'poster': thumb})
     if Fanart == None: Fanart = addonFanart
     item.setProperty('Fanart_Image', Fanart)
     if isFolder == False: item.setProperty('IsPlayable', 'true')
