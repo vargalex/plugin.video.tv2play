@@ -1,3 +1,6 @@
+V1.0.2
+- tartalom típusának beállítása a forrás alapján
+
 V1.0.1
 - epizód tartalmának letöltése
 
