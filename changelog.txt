@@ -1,3 +1,6 @@
+V1.0.1
+- epizód tartalmának letöltése
+
 V1.0.0
 - Csatornák kezelése
 - Csatorna logók beállítása

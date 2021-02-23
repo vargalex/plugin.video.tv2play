@@ -106,11 +106,21 @@ def apiRibbons():
         thumb = "https://tv2play.hu/%s" % card["imageUrl"].encode('utf-8').replace("https://tv2play.hu/", "")
         title = card["title"].encode('utf-8')
         if "contentLength" in card:
+            if control.setting('fillLead') == 'true':
+                r = client.request("https://tv2play.hu/api/search/%s" % card["slug"])
+                episode = json.loads(r)
+                plot = episode["lead"] if "lead" in episode else ""
+                if plot.startswith("<p>"):
+                    plot = plot[3:]
+                if plot.endswith("</p>"):
+                    plot = plot[:-4]
+            else:
+                plot = ""
             addDirectoryItem(title, 
                             "playvideo&param=%s" % card["slug"], 
                             thumb, 
                             "DefaultFolder.png", 
-                            meta={'title': title, 'duration': int(card["contentLength"])}, isFolder=False)
+                            meta={'title': title, 'duration': int(card["contentLength"]), 'plot': plot}, isFolder=False)
         else:
             if card["cardType"] != "ARTICLE":
                 addDirectoryItem(title, 
