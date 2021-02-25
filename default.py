@@ -5,10 +5,12 @@ from resources.lib import client, control
 sysaddon = sys.argv[0] ; syshandle = int(sys.argv[1])
 addonFanart = xbmcaddon.Addon().getAddonInfo('fanart')
 artPath = control.artPath()
+base_url = "https://tv2play.hu"
+api_url = "%s/api" % base_url
 
 def main_folders():
     addDirectoryItem("Műsorok", "musorok", os.path.join(artPath, "tv2play.png"), None)
-    r = client.request("https://tv2play.hu/api/channels")
+    r = client.request("%s/channels" % api_url)
     channels = sorted(json.loads(r), key=lambda k:k["id"])
     for channel in channels:
         if channel["slug"] != "spiler2":
@@ -44,14 +46,14 @@ def musorok():
     for item in allItemsSorted:
         addDirectoryItem(item["title"].encode("utf-8"), 
                          "apisearch&param=%s" % urllib.quote_plus(item["url"]), 
-                         "https://tv2play.hu/%s" % item["imageUrl"].encode('utf-8') if "https://" not in item["imageUrl"] else item["imageUrl"].encode('utf-8'),
+                         "%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"],
                          "DefaultFolder.png", 
                          meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
     endDirectory(type="tvshows")
 
 
 def apiSearchSeason(season):
-    r = client.request("https://tv2play.hu/api/search/%s" % param)
+    r = client.request("%s/search/%s" % (api_url, param))
     data = json.loads(r)
     ribbons = []
     index = 0
@@ -72,9 +74,9 @@ def apiSearchSeason(season):
                 if plot == '' and "description" in tab["showData"]:
                     plot = tab["showData"]["description"].encode('utf-8')
                 if thumb == '' and "imageUrl" in tab["showData"]:
-                    thumb = "https://tv2play.hu/%s" % tab["showData"]["imageUrl"].encode('utf-8') if "https://" not in tab["showData"]["imageUrl"] else tab["showData"]["imageUrl"].encode('utf-8')
+                    thumb = "%s/%s" % (base_url, tab["showData"]["imageUrl"]) if "https://" not in tab["showData"]["imageUrl"] else tab["showData"]["imageUrl"]
     for ribbon in ribbons:
-        r = client.request("https://tv2play.hu/api/ribbons/%s" % ribbon)
+        r = client.request("%s/ribbons/%s" % (api_url, ribbon))
         if r:
             data = json.loads(r)
             addDirectoryItem(data["title"].encode("utf-8"), 
@@ -85,38 +87,44 @@ def apiSearchSeason(season):
     endDirectory(type="tvshows")
 
 def apiSearch():
-    r = client.request("https://tv2play.hu/api/search/%s" % param)
+    r = client.request("%s/search/%s" % (api_url, param))
     data = json.loads(r)
     if "seasonNumbers" in data and len(data["seasonNumbers"])>0:
+        if "seo" in data:
+            plot = data["seo"]["description"].encode('utf-8')
+        else:
+            plot = ""
         for season in data["seasonNumbers"]:
             addDirectoryItem("%s. évad" % season, 
                             "apisearchseason&param=%s&page=%s" % (param, season), 
                             '', 
                             "DefaultFolder.png", 
-                            meta={'title': "%s. évad" % season})
+                            meta={'title': "%s. évad" % season, 'plot': plot})
         endDirectory(type="movies")
     else:
         apiSearchSeason(0)
 
 
 def apiRibbons():
-    r = client.request("https://tv2play.hu/api/ribbons/%s/%s" % (param, page))
+    r = client.request("%s/ribbons/%s/%s" % (api_url, param, page))
     data = json.loads(r)
     dirType = 'videos'
     for card in data["cards"]:
-        thumb = "https://tv2play.hu/%s" % card["imageUrl"].encode('utf-8') if "https://" not in card["imageUrl"] else card["imageUrl"].encode('utf-8')
+        thumb = "%s/%s" % (base_url, card["imageUrl"]) if "https://" not in card["imageUrl"] else card["imageUrl"]
         title = card["title"].encode('utf-8')
         if "contentLength" in card:
+            plot = ""
             if control.setting('fillLead') == 'true':
-                r = client.request("https://tv2play.hu/api/search/%s" % card["slug"])
-                episode = json.loads(r)
-                plot = episode["lead"] if "lead" in episode else ""
-                if plot.startswith("<p>"):
-                    plot = plot[3:]
-                if plot.endswith("</p>"):
-                    plot = plot[:-4]
-            else:
-                plot = ""
+                try:
+                    r = client.request("%s/search/%s" % (api_url, card["slug"]))
+                    episode = json.loads(r)
+                    plot = episode["lead"] if "lead" in episode else ""
+                    if plot.startswith("<p>"):
+                        plot = plot[3:]
+                    if plot.endswith("</p>"):
+                        plot = plot[:-4]
+                except:
+                    pass
             if 'EPISODE' in card['cardType']:
                 dirType = 'episodes'
             if 'MOVIE' in card['cardType']:
@@ -133,7 +141,7 @@ def apiRibbons():
                                 thumb, 
                                 "DefaultFolder.png", 
                                 meta={'title': title, 'plot': card["lead"].encode('utf-8') if "lead" in card else ''})           
-    r = client.request("https://tv2play.hu/api/ribbons/%s/%d" % (param, int(page)+1))
+    r = client.request("%s/ribbons/%s/%d" % (api_url, param, int(page)+1))
     if r != None:
         addDirectoryItem(u'[I]K\u00F6vetkez\u0151 oldal >>[/I]', 'apiribbons&param=%s&page=%d' % (param, int(page)+1), '', 'DefaultFolder.png')
     endDirectory(type=dirType)
@@ -141,17 +149,12 @@ def apiRibbons():
 def playVideo():
     from resources.lib import m3u8_parser
     try:
-        r = client.request("https://tv2play.hu/api/search/%s" % param)
+        r = client.request("%s/search/%s" % (api_url, param))
         data = json.loads(r)
         playerId = data["playerId"]
-        title = ""
-        thumb = ""
-        try:
-            title = data["title"]
-            thumb = "https://tv2play.hu/%s" % data["imageUrl"].encode('utf-8') if "https://" not in data["imageUrl"] else item["imageUrl"].encode('utf-8')
-        except:
-            pass
-        r = client.request("https://tv2play.hu/api/streaming-url?playerId=%s" % playerId)
+        title = data["title"]
+        thumb = "%s/%s" % (base_url, data["imageUrl"]) if "https://" not in data["imageUrl"] else data["imageUrl"]
+        r = client.request("%s/streaming-url?playerId=%s" % (api_url, playerId))
         data = json.loads(r)
         r = client.request(data["url"])
         json_data = json.loads(r)
@@ -161,8 +164,10 @@ def playVideo():
 
         root = os.path.dirname(m3u_url)
         sources = m3u8_parser.parse(r)
-        try: sources.sort(key=lambda x: int(x['resolution'].split('x')[0]), reverse=True)
-        except: pass
+        try: 
+            sources.sort(key=lambda x: int(x['resolution'].split('x')[0]), reverse=True)
+        except: 
+            pass
 
         auto_pick = control.setting('autopick') == '1'
 
@@ -180,6 +185,7 @@ def playVideo():
         item.setInfo(type='Video', infoLabels = {'Title': title})
         control.resolve(int(sys.argv[1]), True, item)
     except:
+        xbmcgui.Dialog().notification("TV2 Play", "Hiba a forrás elérésekor! Nem található?", xbmcgui.NOTIFICATION_ERROR)
         return
 
 def addDirectoryItem(name, query, thumb, icon, context=None, queue=False, isAction=True, isFolder=True, Fanart=None, meta=None):

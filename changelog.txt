@@ -1,3 +1,7 @@
+V1.0.4
+- URL változóba kiemelése
+- bugFix
+
 V1.0.3
 - bugFix
 
