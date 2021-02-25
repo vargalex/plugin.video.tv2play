@@ -1,3 +1,6 @@
+V1.0.3
+- bugFix
+
 V1.0.2
 - tartalom típusának beállítása a forrás alapján
 

@@ -144,8 +144,13 @@ def playVideo():
         r = client.request("https://tv2play.hu/api/search/%s" % param)
         data = json.loads(r)
         playerId = data["playerId"]
-        title = data["title"]
-        thumb = "https://tv2play.hu/%s" % data["imageUrl"].encode('utf-8') if "https://" not in data["imageUrl"] else item["imageUrl"].encode('utf-8')
+        title = ""
+        thumb = ""
+        try:
+            title = data["title"]
+            thumb = "https://tv2play.hu/%s" % data["imageUrl"].encode('utf-8') if "https://" not in data["imageUrl"] else item["imageUrl"].encode('utf-8')
+        except:
+            pass
         r = client.request("https://tv2play.hu/api/streaming-url?playerId=%s" % playerId)
         data = json.loads(r)
         r = client.request(data["url"])
