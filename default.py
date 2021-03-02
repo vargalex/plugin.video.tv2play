@@ -6,7 +6,7 @@ if sys.version_info[0] == 3:
     from urllib.parse import parse_qsl
     from urllib.parse import quote_plus
 else:
-    from urlparse import parse_qls
+    from urlparse import parse_qsl
     from urllib import quote_plus
 
 sysaddon = sys.argv[0] ; syshandle = int(sys.argv[1])
