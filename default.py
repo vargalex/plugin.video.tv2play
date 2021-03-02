@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
-import xbmc, xbmcgui, xbmcaddon, urllib, re, xbmcplugin, json, urlparse, os, sys
+import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys
 from resources.lib import client, control
+
+if sys.version_info[0] == 3:
+    from urllib.parse import parse_qsl
+    from urllib.parse import quote_plus
+else:
+    from urlparse import parse_qls
+    from urllib import quote_plus
 
 sysaddon = sys.argv[0] ; syshandle = int(sys.argv[1])
 addonFanart = xbmcaddon.Addon().getAddonInfo('fanart')
@@ -27,7 +34,7 @@ def musorok():
     allItemCnt = -1
     allItems = []
     while len(allItems) != allItemCnt:
-        r = client.request("https://tv2-bud.gravityrd-services.com/grrec-tv2-war/JSServlet4?rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part\]" % pageOffset)
+        r = client.request("https://tv2-bud.gravityrd-services.com/grrec-tv2-war/JSServlet4?rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part\]" % pageOffset).decode('utf-8')
         matches=re.search(r'(.*)var data = ([^;]*);(.*)', r, re.S)
         if matches:
             result = json.loads(matches.group(2))
@@ -45,7 +52,7 @@ def musorok():
     allItemsSorted=sorted(allItems, key=lambda k:k["title"])
     for item in allItemsSorted:
         addDirectoryItem(item["title"].encode("utf-8"), 
-                         "apisearch&param=%s" % urllib.quote_plus(item["url"]), 
+                         "apisearch&param=%s" % quote_plus(item["url"]), 
                          "%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"],
                          "DefaultFolder.png", 
                          meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
@@ -137,7 +144,7 @@ def apiRibbons():
         else:
             if card["cardType"] != "ARTICLE":
                 addDirectoryItem(title, 
-                                "apisearch&param=%s" % urllib.quote_plus(card["slug"]), 
+                                "apisearch&param=%s" % quote_plus(card["slug"]), 
                                 thumb, 
                                 "DefaultFolder.png", 
                                 meta={'title': title, 'plot': card["lead"].encode('utf-8') if "lead" in card else ''})           
@@ -224,17 +231,15 @@ def doSearch():
         global keyword
         global page
         functionIdx = page
-        keyword = urllib.quote_plus(search_text)
+        keyword = quote_plus(search_text)
         page = '1'
         global mode2Sub 
         mode2Sub[int(functionIdx)]()
 	
-params = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
+params = dict(parse_qsl(sys.argv[2].replace('?', '')))
 
 action = params.get('action')
-
 param = params.get('param')
-
 page = params.get('page')
 
 if action == None:

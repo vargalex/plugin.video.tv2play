@@ -17,7 +17,7 @@ def parse(content):
     state = {'expect_playlist': False}
 
     lineno = 0
-    for line in string_to_lines(content):
+    for line in string_to_lines(content.decode('utf-8')):
         lineno += 1
         line = line.strip()
 

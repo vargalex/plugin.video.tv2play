@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import re,sys,urllib2,urlparse,HTMLParser,random
+import re,sys,random
 from resources.lib import cache
+
+if sys.version_info[0] == 3:
+    import urllib.request as urllib2
+    import urllib.parse as urlparse
+    import html.parser as HTMLParser
+    from urllib.error import HTTPError as HTTPError
+else:
+    import urllib2
+    import urlparse
+    import HTMLParser
+    from urllib2 import HTTPError as HTTPError
 
 def request(url, close=True, error=False, proxy=None, post=None, headers=None, mobile=False, safe=False, referer=None, cookie=None, output='', timeout='30'):
     try:
@@ -11,7 +22,10 @@ def request(url, close=True, error=False, proxy=None, post=None, headers=None, m
             opener = urllib2.build_opener(*handlers)
             opener = urllib2.install_opener(opener)
         if output == 'cookie' or output == 'extended' or not close == True:
-            import cookielib
+            if sys.version.info[0] == 3:
+                import http.cookiejar as cookielib
+            else:
+                import cookielib
             cookies = cookielib.LWPCookieJar()
             handlers += [urllib2.HTTPHandler(), urllib2.HTTPSHandler(), urllib2.HTTPCookieProcessor(cookies)]
             opener = urllib2.build_opener(*handlers)
@@ -53,7 +67,7 @@ def request(url, close=True, error=False, proxy=None, post=None, headers=None, m
 
         try:
             response = urllib2.urlopen(request, timeout=int(timeout))
-        except urllib2.HTTPError as response:
+        except HTTPError as response:
             if error == False: return
 
         if output == 'cookie':
@@ -110,7 +124,7 @@ def parseDOM(html, name=u"", attrs={}, ret=False):
             html = [html.decode("utf-8")] # Replace with chardet thingy
         except:
             html = [html]
-    elif isinstance(html, unicode):
+    elif isinstance(html, str if sys.version_info[0] == 3 else unicode):
         html = [html]
     elif not isinstance(html, list):
         return u""
@@ -134,7 +148,7 @@ def parseDOM(html, name=u"", attrs={}, ret=False):
                 lst = lst2
                 lst2 = []
             else:
-                test = range(len(lst))
+                test = list(range(len(lst)))
                 test.reverse()
                 for i in test:  # Delete anything missing from the next list.
                     if not lst[i] in lst2:
@@ -209,7 +223,7 @@ def parseDOM(html, name=u"", attrs={}, ret=False):
 
 def replaceHTMLCodes(txt):
     txt = re.sub("(&#[0-9]+)([^;^0-9]+)", "\\1;\\2", txt)
-    txt = HTMLParser.HTMLParser().unescape(txt)
+    txt = HTMLParser().unescape(txt)
     txt = txt.replace("&quot;", "\"")
     txt = txt.replace("&amp;", "&")
     return txt
@@ -217,7 +231,7 @@ def replaceHTMLCodes(txt):
 
 def randomagent():
     BR_VERS = [
-        ['%s.0' % i for i in xrange(18, 43)],
+        ['%s.0' % i for i in range(18, 43)],
         ['61.0.3163.79', '61.0.3163.100', '62.0.3202.89', '62.0.3202.94', '63.0.3239.83', '63.0.3239.84', '64.0.3282.186', '65.0.3325.162', '65.0.3325.181', '66.0.3359.117', '66.0.3359.139',
          '67.0.3396.99', '68.0.3440.84', '68.0.3440.106', '68.0.3440.1805', '69.0.3497.100', '70.0.3538.67', '70.0.3538.77', '70.0.3538.110', '70.0.3538.102', '71.0.3578.80', '71.0.3578.98',
          '72.0.3626.109', '72.0.3626.121', '73.0.3683.103', '74.0.3729.131'],
