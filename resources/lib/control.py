@@ -71,7 +71,10 @@ skinPath = xbmc.translatePath('special://skin/')
 
 addonPath = xbmc.translatePath(addonInfo('path'))
 
-dataPath = xbmc.translatePath(addonInfo('profile')).decode('utf-8')
+try:
+    dataPath = xbmc.translatePath(addonInfo('profile')).decode('utf-8')
+except:
+    dataPath = xbmc.translatePath(addonInfo('profile'))
 
 playlistFile = os.path.join(dataPath, 'playlist.db')
 
