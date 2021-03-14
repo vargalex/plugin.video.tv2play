@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys
 from resources.lib import client, control
+from resources.lib.utils import py2_encode
 
 if sys.version_info[0] == 3:
     from urllib.parse import parse_qsl
@@ -21,10 +22,14 @@ def main_folders():
     channels = sorted(json.loads(r), key=lambda k:k["id"])
     for channel in channels:
         if channel["slug"] != "spiler2":
+            try:
+                logopath = os.path.join(py2_encode(artPath), "%s%s" % (channel["slug"], ".png"))
+            except:
+                logopath = ''
             addDirectoryItem(channel["name"], 
                             "apisearch&param=%s" % channel["slug"], 
-                            os.path.join(artPath, "%s%s" % (channel["slug"], ".png")), 
-                            os.path.join(artPath, "%s%s" % (channel["slug"], ".png")),
+                            logopath, 
+                            logopath,
                             meta={'title': channel["name"]})
     endDirectory(type="")
     return

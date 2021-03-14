@@ -1,3 +1,6 @@
+V1.0.8
+- Csatorna logo beállítás javítása speciális karakter esetén
+
 V1.0.7
 - Icon javítása
 
