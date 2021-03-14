@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys
 from resources.lib import client, control
-from resources.lib.utils import py2_encode
+from resources.lib.utils import py2_decode
 
 if sys.version_info[0] == 3:
     from urllib.parse import parse_qsl
@@ -12,18 +12,18 @@ else:
 
 sysaddon = sys.argv[0] ; syshandle = int(sys.argv[1])
 addonFanart = xbmcaddon.Addon().getAddonInfo('fanart')
-artPath = control.artPath()
 base_url = "https://tv2play.hu"
 api_url = "%s/api" % base_url
 
 def main_folders():
+    artPath = py2_decode(control.artPath())
     addDirectoryItem("Műsorok", "musorok", os.path.join(artPath, "tv2play.png"), None)
     r = client.request("%s/channels" % api_url)
     channels = sorted(json.loads(r), key=lambda k:k["id"])
     for channel in channels:
         if channel["slug"] != "spiler2":
             try:
-                logopath = os.path.join(py2_encode(artPath), "%s%s" % (channel["slug"], ".png"))
+                logopath = os.path.join(artPath, "%s%s" % (channel["slug"], ".png"))
             except:
                 logopath = ''
             addDirectoryItem(channel["name"], 
