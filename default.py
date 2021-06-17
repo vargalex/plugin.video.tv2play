@@ -58,7 +58,7 @@ def musorok():
     for item in allItemsSorted:
         addDirectoryItem(item["title"].encode("utf-8"), 
                          "apisearch&param=%s" % quote_plus(item["url"]), 
-                         "%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"],
+                         ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
                          "DefaultFolder.png", 
                          meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
     endDirectory(type="tvshows")

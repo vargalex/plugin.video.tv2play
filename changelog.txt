@@ -1,3 +1,6 @@
+V1.0.10
+- Vannak imageUrl nélküli műsorok
+
 V1.0.9
 - Speciális karakter dekódolás javítása
 
