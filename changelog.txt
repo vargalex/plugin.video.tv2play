@@ -1,3 +1,6 @@
+V1.0.11
+- Stream URL lekérésének módosítása, plusz URL paraméter szükséges
+
 V1.0.10
 - Vannak imageUrl nélküli műsorok
 

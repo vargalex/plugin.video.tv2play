@@ -166,7 +166,7 @@ def playVideo():
         playerId = data["playerId"]
         title = data["title"]
         thumb = "%s/%s" % (base_url, data["imageUrl"]) if "https://" not in data["imageUrl"] else data["imageUrl"]
-        r = client.request("%s/streaming-url?playerId=%s" % (api_url, playerId))
+        r = client.request("%s/streaming-url?playerId=%s&stream=undefined" % (api_url, playerId))
         data = json.loads(r)
         r = client.request(data["url"])
         json_data = json.loads(r)

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tv2play" name="TV2 Play" version="1.0.10" provider-name="vargalex">
+<addon id="plugin.video.tv2play" name="TV2 Play" version="1.0.11" provider-name="vargalex">
 	<extension point="xbmc.python.pluginsource" library="default.py">
 		<provides>video</provides>
 	</extension>
