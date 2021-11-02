@@ -168,6 +168,9 @@ def playVideo():
         thumb = "%s/%s" % (base_url, data["imageUrl"]) if "https://" not in data["imageUrl"] else data["imageUrl"]
         r = client.request("%s/streaming-url?playerId=%s&stream=undefined" % (api_url, playerId))
         data = json.loads(r)
+        if (data["geoBlocked"] != False):
+            xbmcgui.Dialog().notification("TV2 Play", "A tartalom a tartózkodási helyedről sajnos nem elérhető!", xbmcgui.NOTIFICATION_ERROR)
+            return
         r = client.request(data["url"])
         json_data = json.loads(r)
         m3u_url = json_data['bitrates']['hls']

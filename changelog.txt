@@ -1,3 +1,6 @@
+V1.0.12
+- GeoBlocking ellenőrzése
+
 V1.0.11
 - Stream URL lekérésének módosítása, plusz URL paraméter szükséges
 
