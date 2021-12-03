@@ -1,3 +1,6 @@
+V1.0.13
+- Műsorok lekérése bugfix
+
 V1.0.12
 - GeoBlocking ellenőrzése
 

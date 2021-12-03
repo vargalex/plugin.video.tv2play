@@ -40,9 +40,9 @@ def musorok():
     allItems = []
     while len(allItems) != allItemCnt:
         r = client.request("https://tv2-bud.gravityrd-services.com/grrec-tv2-war/JSServlet4?rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part\]" % pageOffset).decode('utf-8')
-        matches=re.search(r'(.*)var data = ([^;]*);(.*)', r, re.S)
+        matches=re.search(r'(.*)var data = (.*)};(.*)', r, re.S)
         if matches:
-            result = json.loads(matches.group(2))
+            result = json.loads("%s}" % matches.group(2))
             if allItemCnt == -1:
                 onv = result["recommendationWrappers"][0]["recommendation"]["outputNameValues"]
                 for variable in onv:
