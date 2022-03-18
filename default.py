@@ -21,7 +21,7 @@ def main_folders():
     r = client.request("%s/channels" % api_url)
     channels = sorted(json.loads(r), key=lambda k:k["id"])
     for channel in channels:
-        if channel["slug"] != "spiler2":
+        if channel["slug"] != "spiler2" and not channel["isPremium"]:
             try:
                 logopath = os.path.join(artPath, "%s%s" % (channel["slug"], ".png"))
             except:
@@ -39,7 +39,7 @@ def musorok():
     allItemCnt = -1
     allItems = []
     while len(allItems) != allItemCnt:
-        r = client.request("https://tv2-bud.gravityrd-services.com/grrec-tv2-war/JSServlet4?rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part\]" % pageOffset).decode('utf-8')
+        r = client.request("https://tv2-bud.gravityrd-services.com/grrec-tv2-war/JSServlet4?rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]" % pageOffset).decode('utf-8')
         matches=re.search(r'(.*)var data = (.*)};(.*)', r, re.S)
         if matches:
             result = json.loads("%s}" % matches.group(2))
@@ -56,11 +56,12 @@ def musorok():
         pageOffset=len(allItems)
     allItemsSorted=sorted(allItems, key=lambda k:k["title"])
     for item in allItemsSorted:
-        addDirectoryItem(item["title"].encode("utf-8"), 
-                         "apisearch&param=%s" % quote_plus(item["url"]), 
-                         ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
-                         "DefaultFolder.png", 
-                         meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
+        if not "isPremium" in item or item["isPremium"] == "false":
+            addDirectoryItem(item["title"].encode("utf-8"),
+                             "apisearch&param=%s" % quote_plus(item["url"]),
+                             ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
+                             "DefaultFolder.png",
+                             meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
     endDirectory(type="tvshows")
 
 
@@ -91,11 +92,12 @@ def apiSearchSeason(season):
         r = client.request("%s/ribbons/%s" % (api_url, ribbon))
         if r:
             data = json.loads(r)
-            addDirectoryItem(data["title"].encode("utf-8"), 
-                            "apiribbons&param=%s&page=0" % data["id"], 
-                            thumb, 
-                            "DefaultFolder.png", 
-                            meta={'title': data["title"].encode("utf-8"), 'plot': plot})
+            if not "isPremium" in data or data["isPremium"] == "false":
+                addDirectoryItem(data["title"].encode("utf-8"),
+                                "apiribbons&param=%s&page=0" % data["id"],
+                                thumb,
+                                "DefaultFolder.png",
+                                meta={'title': data["title"].encode("utf-8"), 'plot': plot})
     endDirectory(type="tvshows")
 
 def apiSearch():

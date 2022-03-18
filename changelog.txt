@@ -1,3 +1,6 @@
+V1.0.14
+- Prémium tartalmak elrejtése
+
 V1.0.13
 - Műsorok lekérése bugfix
 
