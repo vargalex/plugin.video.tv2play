@@ -1,3 +1,6 @@
+V1.0.15~alpha
+- Prémium hozzáférés kezelése
+
 V1.0.14
 - Prémium tartalmak elrejtése
 
