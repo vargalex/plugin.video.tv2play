@@ -16,6 +16,7 @@ base_url = "https://tv2play.hu"
 api_url = "%s/api" % base_url
 auth_url = "%s/authenticate" % api_url
 userinfo_url = "%s/users/me" % api_url
+logout_url = "%s/logout" % api_url
 
 def main_folders():
     artPath = py2_decode(control.artPath())
@@ -110,7 +111,7 @@ def apiSearch():
             plot = ""
         for season in data["seasonNumbers"]:
             addDirectoryItem("%s. évad" % season, 
-                            "apisearchseason&param=%s&page=%s" % (param, season), 
+                            "apisearchseason&param=%s&page=%s&ispremium=%s" % (param, season, ispremium),
                             '', 
                             "DefaultFolder.png", 
                             meta={'title': "%s. évad" % season, 'plot': plot})
@@ -258,6 +259,10 @@ def doLogout():
 
 def logout():
     if control.yesnoDialog("Valóban ki szeretne jelentkezni?") == 1:
+        try:
+            res = client.request(logout_url, cookie="jwt=%s" % jwtToken if jwtToken else None)
+        except:
+            pass
         doLogout()
 
 def login():

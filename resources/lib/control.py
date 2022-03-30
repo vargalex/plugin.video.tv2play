@@ -101,8 +101,8 @@ def infoDialog(message, heading=addonInfo('name'), icon='', time=3000):
     except: execute("Notification(%s,%s, %s, %s)" % (heading, message, time, icon))
 
 
-def yesnoDialog(line1, line2, line3, heading=addonInfo('name'), nolabel='', yeslabel=''):
-    return dialog.yesno(heading, line1, line2, line3, nolabel, yeslabel)
+def yesnoDialog(message, heading=addonInfo('name'), nolabel='', yeslabel=''):
+    return dialog.yesno(heading, message, nolabel, yeslabel)
 
 
 def selectDialog(list, heading=addonInfo('name')):
