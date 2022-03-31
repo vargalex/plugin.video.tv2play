@@ -1,3 +1,6 @@
+V1.0.15
+- Prémium-hoz szukséges login figyelmeztetés első indításkor
+
 V1.0.15~beta1
 - Prémium több évados sorozatok kezelésének javítása
 - Logout elvégzése

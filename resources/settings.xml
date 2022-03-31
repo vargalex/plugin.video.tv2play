@@ -1,8 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
     <category label="Általános">
-	    <setting label="Videó minősége" type="enum" id="autopick" values="Választható|Legjobb" default="0"/>
-	    <setting label="Epizód tartalom letöltése" type="bool" id="fillLead" default="false" />
+        <setting label="Videó minősége" type="enum" id="autopick" values="Választható|Legjobb" default="0" />
+        <setting label="Epizód tartalom letöltése" type="bool" id="fillLead" default="false" />
+        <setting type="bool" id="firstStart" visible="false" default="true" />
     </category>
     <category label="Bejelentkezés">
         <setting label="TV2 Play bejelentkezés" type="lsep" />

@@ -319,6 +319,11 @@ def getJWTToken():
         doLogout()
     return None
 
+if control.setting("firstStart") in ["true", "True"]:
+    if control.yesnoDialog("A [COLOR gold]PRÉMIUM[/COLOR] tartalmak eléréséhez [B]TV2 Play Prémium[/B] csomag szükséges! A kiegészítő beállításaiban megadhatod a bejelentkezési adataidat.", nolabel='Bezárás', yeslabel='Beállítások megnyitása') == True:
+        control.openSettings()
+    control.setSetting('firstStart', "false")
+
 jwtToken = getJWTToken()
 hasPremium = control.setting("hasPremium") == "true"
 
