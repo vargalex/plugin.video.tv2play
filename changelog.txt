@@ -1,3 +1,6 @@
+V1.0.16
+- Nexus kompatibilitás
+
 V1.0.15
 - Prémium-hoz szukséges login figyelmeztetés első indításkor
 
