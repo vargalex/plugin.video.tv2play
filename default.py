@@ -311,7 +311,7 @@ def musorok():
             allItems = []
         pageOffset=len(allItems)
     if control.setting('programorder') == '1':
-        allItemsSorted=sorted(allItems, key=lambda k: locale.strxfrm(k["title"].lower()))
+        allItemsSorted=sorted(allItems, key=lambda k: locale.strxfrm((k["title"] if isinstance(k["title"], str) else k["title"].encode("utf-8")).lower()))
     else:
         allItemsSorted = allItems
     for item in allItemsSorted:
