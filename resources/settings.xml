@@ -1,20 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
     <category label="Általános">
-        <setting label="Videó minősége" type="enum" id="autopick" values="Választható|Legjobb" default="0" />
+        <setting label="Videó minősége" type="enum" id="autopick" values="Választható|Legjobb" default="0" visible="!eq(8,true)"/>
         <setting label="Műsorlista sorrend" type="enum" id="programorder" values="Népszerűség|Név" default="0" />
         <setting label="Epizód sorrend" type="enum" id="episodeorder" values="Népszerűség|Név" default="0" />
         <setting label="Epizód tartalom letöltése" type="bool" id="fillLead" default="false" />
         <setting type="bool" id="firstStart" visible="false" default="true" />
         <setting label="Véletlenszerű magyarországi IP cím használata" type="bool" id="chooseRandomIP" default="false" />
         <setting type="text" id="randomIP" visible="false" default="" />
+        <setting type="lsep" label="InputStream Adaptive beállítások" />
+        <setting label="Inputstream adaptive használata" type="bool" id="useisa" default="false" />
+        <setting id="drmsettings" type="action" label="InputStream Adaptive beállítások" option="close" action="RunPlugin(plugin://plugin.video.tv2play/?action=drmSettings)" visible="eq(-1,true)" />
     </category>
     <category label="Bejelentkezés">
         <setting label="TV2 Play bejelentkezés" type="lsep" />
         <setting label="E-mail cím:" type="text" id="email" default="" />
         <setting label="Jelszó:" type="text" id="password" option="hidden" default="" />
         <setting type="bool" id="loggedIn" visible="false" default="false" />
-        <setting id="logout" type="action" label="[B][COLOR red]Kijelentkezés[/COLOR][/B]" option="close" action="RunPlugin(plugin://plugin.video.tv2play/?action=logout)" visible="eq(-1,true)"></setting>
+        <setting id="logout" type="action" label="[B][COLOR red]Kijelentkezés[/COLOR][/B]" option="close" action="RunPlugin(plugin://plugin.video.tv2play/?action=logout)" visible="eq(-1,true)" />
         <setting type="text" id="jwtToken" visible="false" default="" />
         <setting type="bool" id="hasPremium" visible="false" default="false" />
     </category>

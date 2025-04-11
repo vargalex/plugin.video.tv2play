@@ -292,20 +292,17 @@ def main_folders():
 
 def musorok():
     pageOffset = 0
-    allItemCnt = -1
     allItems = []
-    while len(allItems) != allItemCnt:
-        r = client.request("https://tv2-bud.gravityrd-services.com/grrec-tv2-war/JSServlet4?rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]" % pageOffset, headers=headers)
+    totalResults = -1
+    musorokURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?&rn=&cid=&ts=%d&rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
+    while totalResults != 0:
+        r = client.request(musorokURL % (int(time.time()), pageOffset), headers=headers)
         matches=re.search(r'(.*)var data = (.*)};(.*)', r, re.S)
         if matches:
             result = json.loads("%s}" % matches.group(2))
-            if allItemCnt == -1:
-                onv = result["recommendationWrappers"][0]["recommendation"]["outputNameValues"]
-                for variable in onv:
-                    if variable["name"] == "allItemCount":
-                        allItemCnt = int(variable["value"])
-                        break
-            allItems.extend(result["recommendationWrappers"][0]["recommendation"]["items"])
+            totalResults = result["recommendationWrappers"][0]["recommendation"]["totalResults"]
+            if totalResults > 0:
+                allItems.extend(result["recommendationWrappers"][0]["recommendation"]["items"])
         else:
             allItemCnt = 0
             allItems = []
@@ -439,27 +436,37 @@ def playVideo():
         json_data = json.loads(r)
         m3u_url = json_data['bitrates']['hls']
         m3u_url = json_url = re.sub('^//', 'https://', m3u_url)
-        r = client.request(m3u_url, headers=headers)
-
-        root = os.path.dirname(m3u_url)
-        sources = m3u8_parser.parse(r)
-        try: 
-            sources.sort(key=lambda x: int(x['resolution'].split('x')[0]), reverse=True)
-        except: 
-            pass
-
-        auto_pick = control.setting('autopick') == '1'
-
-        if len(sources) == 1 or auto_pick == True:
-            source = sources[0]['uri']
+        if control.setting("useisa") == "true":
+            item = control.item(path=m3u_url)
+            from inputstreamhelper import Helper
+            is_helper = Helper('hls')
+            if is_helper.check_inputstream():
+                if sys.version_info < (3, 0):  # if python version < 3 is safe to assume we are running on Kodi 18
+                    item.setProperty('inputstreamaddon', 'inputstream.adaptive')   # compatible with Kodi 18 API
+                else:
+                    item.setProperty('inputstream', 'inputstream.adaptive')  # compatible with recent builds Kodi 19 API
+                item.setProperty('inputstream.adaptive.manifest_type', 'hls')
         else:
-            result = xbmcgui.Dialog().select(u'Min\u0151s\u00E9g', [str(source['resolution']) if 'resolution' in source else 'Unknown' for source in sources])
-            if result == -1:
+            r = client.request(m3u_url, headers=headers)
+            root = os.path.dirname(m3u_url)
+            sources = m3u8_parser.parse(r)
+            try: 
+                sources.sort(key=lambda x: int(x['resolution'].split('x')[0]), reverse=True)
+            except: 
+                pass
+
+            auto_pick = control.setting('autopick') == '1'
+
+            if len(sources) == 1 or auto_pick == True:
                 source = sources[0]['uri']
             else:
-                source = sources[result]['uri']
-        stream_url = root + '/' + source
-        item = control.item(path=stream_url)
+                result = xbmcgui.Dialog().select(u'Min\u0151s\u00E9g', [str(source['resolution']) if 'resolution' in source else 'Unknown' for source in sources])
+                if result == -1:
+                    source = sources[0]['uri']
+                else:
+                    source = sources[result]['uri']
+            stream_url = root + '/' + source
+            item = control.item(path=stream_url)
         item.setArt({'icon': thumb, 'thumb': thumb})
         item.setInfo(type='Video', infoLabels = {'Title': title, 'Plot': plot})
         control.resolve(int(sys.argv[1]), True, item)
@@ -608,3 +615,5 @@ elif action == 'playvideo':
     playVideo()
 elif action == 'logout':
     logout()
+elif action == 'drmSettings':
+    xbmcaddon.Addon(id='inputstream.adaptive').openSettings()
