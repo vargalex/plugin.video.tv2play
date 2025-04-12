@@ -1,3 +1,6 @@
+V1.0.20
+- Keresés megvalósítása
+
 V1.0.19
 - Forrás változás követése
 - Inputstream Adaptive használata kapcsolható

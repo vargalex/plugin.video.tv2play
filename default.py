@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys, base64, time, locale, random, struct, socket
 from resources.lib import client, control
-from resources.lib.utils import py2_decode
+from resources.lib.utils import py2_decode, safeopen
 
 if sys.version_info[0] == 3:
     from urllib.parse import parse_qsl
-    from urllib.parse import quote_plus
+    from urllib.parse import quote_plus, quote
 else:
     from urlparse import parse_qsl
-    from urllib import quote_plus
+    from urllib import quote_plus, quote
 
 sysaddon = sys.argv[0] ; syshandle = int(sys.argv[1])
 addonFanart = xbmcaddon.Addon().getAddonInfo('fanart')
@@ -17,10 +17,18 @@ api_url = "%s/api" % base_url
 auth_url = "%s/authenticate" % api_url
 userinfo_url = "%s/users/me" % api_url
 logout_url = "%s/logout" % api_url
+musorokURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?&rn=&cid=&ts=%d&rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:18;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
+searchURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?rn=&cid=&ts=%d&rd=0,TV2_W_SEARCH_RESULT,80,[*platform:web;*domain:tv2play;*query:#SEARCHSTRING#;*country:HU;*userAge:18;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
+
 try:
-    locale.setlocale(locale.LC_ALL, "")
+    locale.setlocale(locale.LC_ALL, "hu_HU.UTF-8")
 except:
-    pass
+    try:
+        locale.setlocale(locale.LC_ALL, "")
+    except:
+        pass
+base_path = py2_decode(control.dataPath)
+searchFileName = os.path.join(base_path, "search.history")
 
 def produce_header():
     hungarianIPRanges = [
@@ -272,9 +280,54 @@ def produce_header():
 
 headers = produce_header()
 
+def getSearches():
+    addDirectoryItem('[COLOR lightgreen]Új keresés[/COLOR]', 'newsearch', '', 'DefaultFolder.png')
+    try:
+        file = safeopen(searchFileName, "r")
+        olditems = file.read().splitlines()
+        file.close()
+        items = list(set(olditems))
+        items.sort(key=locale.strxfrm)
+        if len(items) != len(olditems):
+            file = safeopen(searchFileName, "w")
+            file.write("\n".join(items))
+            file.close()
+        for item in items:
+            addDirectoryItem(item, 'historysearch&search=%s' % item, '', 'DefaultFolder.png')
+        if len(items) > 0:
+            addDirectoryItem('[COLOR red]Keresési előzmények törlése[/COLOR]', 'deletesearchhistory', '', 'DefaultFolder.png')
+    except:
+        pass
+    endDirectory()
+
+def deleteSearchHistory():
+    if os.path.exists(searchFileName):
+        os.remove(searchFileName)
+
+def getText(title, hidden=False):
+    search_text = ''
+    keyb = xbmc.Keyboard('', title, hidden)
+    keyb.doModal()
+
+    if (keyb.isConfirmed()):
+        search_text = keyb.getText()
+
+    return search_text
+
+def doSearch():
+    search_text = getText(u'Add meg a keresend\xF5 film c\xEDm\xE9t')
+    if search_text != '':
+        if not os.path.exists(base_path):
+            os.mkdir(base_path)
+        file = safeopen(searchFileName, "a")
+        file.write("%s\n" % search_text)
+        file.close()
+        musorok(searchURL.replace("#SEARCHSTRING#", quote(search_text).replace("%", "%%")))
+
 def main_folders():
     artPath = py2_decode(control.artPath())
     addDirectoryItem("Műsorok", "musorok", os.path.join(artPath, "tv2play.png"), None)
+    addDirectoryItem("Keresés", "search", "", "DefaultAddonsSearch.png")
     r = client.request("%s/channels" % api_url, headers=headers)
     channels = sorted(json.loads(r), key=lambda k:k["id"])
     for channel in channels:
@@ -290,13 +343,12 @@ def main_folders():
                             meta={'title': channel["name"]})
     endDirectory(type="")
 
-def musorok():
+def musorok(url):
     pageOffset = 0
     allItems = []
-    totalResults = -1
-    musorokURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?&rn=&cid=&ts=%d&rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:16;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
-    while totalResults != 0:
-        r = client.request(musorokURL % (int(time.time()), pageOffset), headers=headers)
+    totalResults = 50
+    while totalResults >= 50:
+        r = client.request(url % (int(time.time()), pageOffset), headers=headers)
         matches=re.search(r'(.*)var data = (.*)};(.*)', r, re.S)
         if matches:
             result = json.loads("%s}" % matches.group(2))
@@ -306,18 +358,28 @@ def musorok():
         else:
             allItemCnt = 0
             allItems = []
+            totalResults = 0
         pageOffset=len(allItems)
+        if "SEARCH_RESULT" in url:
+            totalResults = 0
     if control.setting('programorder') == '1':
-        allItemsSorted=sorted(allItems, key=lambda k: locale.strxfrm((k["title"] if isinstance(k["title"], str) else k["title"].encode("utf-8")).lower()))
+        allItemsSorted=sorted(allItems, key=lambda k: locale.strxfrm("%s%s" % ("000" if k["contentType"] == "SHOW" else "001", (k["title"] if isinstance(k["title"], str) else k["title"].encode("utf-8")).lower())))
     else:
         allItemsSorted = allItems
     for item in allItemsSorted:
         if hasPremium or not "isPremium" in item or item["isPremium"] == "false":
-            addDirectoryItem(item["title"].encode("utf-8"),
-                             "apisearch&param=%s&ispremium=%s" % (quote_plus(item["url"]), item["isPremium"] if "isPremium" in item else ""),
-                             ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
-                             "DefaultFolder.png",
-                             meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
+            if item["contentType"] == "SHOW":
+                addDirectoryItem(item["title"].encode("utf-8"),
+                                 "apisearch&param=%s&ispremium=%s" % (quote_plus(item["url"]), item["isPremium"] if "isPremium" in item else ""),
+                                 ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
+                                 "DefaultFolder.png",
+                                 meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
+            else:
+                addDirectoryItem(item["title"].encode("utf-8"),
+                                "playvideo&param=%s&ispremium=%s" % (item["url"], item["isPremium"] if "isPremium" in item else ""),
+                                ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
+                                "DefaultFolder.png",
+                                meta={'title': item["title"].encode("utf-8"), 'duration': int(item["duration"]) if "duration" in item else 0, 'plot': item["lead"].encode('utf-8') if "lead" in item else ''}, isFolder=False)
     endDirectory(type="tvshows")
 
 
@@ -423,10 +485,11 @@ def playVideo():
         joinedParam = "/".join(splittedParam)
         r = client.request("%s%s/search/%s" % (api_url, "/premium" if ispremium else "", joinedParam), cookie="jwt=%s" % jwtToken if jwtToken else None, headers=headers)
         data = json.loads(r)
-        playerId = data["playerId"]
+        playerId = data["playerId"] if "playerId" in data else data["coverVideoPlayerId"]
         title = data["title"]
         plot = data["lead"] if "lead" in data else ""
-        thumb = "%s/%s" % (base_url, data["imageUrl"]) if "https://" not in data["imageUrl"] else data["imageUrl"]
+        imageItem = "imageUrl" if "imageUrl" in data else "coverVideoImageUrl"
+        thumb = "%s/%s" % (base_url, data[imageItem]) if "https://" not in data[imageItem] else data[imageItem]
         r = client.request("%s%s/streaming-url?playerId=%s&stream=undefined" % (api_url, "/premium" if ispremium else "", playerId), cookie="jwt=%s" % jwtToken if jwtToken else None, headers=headers)
         data = json.loads(r)
         if (data["geoBlocked"] != False):
@@ -502,17 +565,6 @@ def getText(title, hidden=False):
         search_text = keyb.getText()
 
     return search_text
-
-def doSearch():
-    search_text = getText(u'Add meg a keresend\xF5 kifejez\xE9st')
-    if search_text != '':
-        global keyword
-        global page
-        functionIdx = page
-        keyword = quote_plus(search_text)
-        page = '1'
-        global mode2Sub 
-        mode2Sub[int(functionIdx)]()
 
 def doLogout():
     control.setSetting("loggedIn", "false")
@@ -599,12 +651,13 @@ params = dict(parse_qsl(sys.argv[2].replace('?', '')))
 action = params.get('action')
 param = params.get('param')
 page = params.get('page')
+search = params.get('search')
 ispremium = True if params.get('ispremium') in ["true", "True"] else False
 
 if action == None:
     main_folders()
 elif action == 'musorok':
-    musorok()
+    musorok(musorokURL)
 elif action == 'apisearch':
     apiSearch()
 elif action == 'apisearchseason':
@@ -617,3 +670,11 @@ elif action == 'logout':
     logout()
 elif action == 'drmSettings':
     xbmcaddon.Addon(id='inputstream.adaptive').openSettings()
+elif action == 'search':
+    getSearches()
+elif action == 'newsearch':
+    doSearch()
+elif action == 'deletesearchhistory':
+    deleteSearchHistory()
+elif action == 'historysearch':
+    musorok(searchURL.replace("#SEARCHSTRING#", quote(search).replace("%", "%%")))
