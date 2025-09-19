@@ -1,3 +1,6 @@
+V1.0.22
+- Icon bugfix
+
 V1.0.21
 - Élő műsor megtekintése
 
