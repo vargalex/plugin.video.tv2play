@@ -1,3 +1,6 @@
+V1.0.21
+- Élő műsor megtekintése
+
 V1.0.20
 - Keresés megvalósítása
 

@@ -19,6 +19,8 @@ userinfo_url = "%s/users/me" % api_url
 logout_url = "%s/logout" % api_url
 musorokURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?&rn=&cid=&ts=%d&rd=0,TV2_W_CONTENT_LISTING,800,[*platform:web;*domain:tv2play;*currentContent:SHOW;*country:HU;*userAge:18;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
 searchURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?rn=&cid=&ts=%d&rd=0,TV2_W_SEARCH_RESULT,80,[*platform:web;*domain:tv2play;*query:#SEARCHSTRING#;*country:HU;*userAge:18;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
+epgURL = "%s/epg/data?date=%%s" % api_url
+streamingJwtUrl = "%s/premium/streaming-jwt?playerId=live/%%s" % api_url
 
 try:
     locale.setlocale(locale.LC_ALL, "hu_HU.UTF-8")
@@ -327,6 +329,8 @@ def doSearch():
 def main_folders():
     artPath = py2_decode(control.artPath())
     addDirectoryItem("Műsorok", "musorok", os.path.join(artPath, "tv2play.png"), None)
+    if hasPremium:
+        addDirectoryItem("Élő", "elo", os.path.join(artPath, "live.png"), None)
     addDirectoryItem("Keresés", "search", "", "DefaultAddonsSearch.png")
     r = client.request("%s/channels" % api_url, headers=headers)
     channels = sorted(json.loads(r), key=lambda k:k["id"])
@@ -382,6 +386,62 @@ def musorok(url):
                                 meta={'title': item["title"].encode("utf-8"), 'duration': int(item["duration"]) if "duration" in item else 0, 'plot': item["lead"].encode('utf-8') if "lead" in item else ''}, isFolder=False)
     endDirectory(type="tvshows")
 
+def elo():
+    data = json.loads(client.request(epgURL % time.strftime("%Y-%m-%d"), cookie="jwt=%s" % jwtToken, headers = headers))
+    lives = []
+    for item in data:
+        if item["live"]:
+            startTime = time.strptime(item["broadcastTime"][11:16], "%H:%M")
+            epochTime = time.mktime(startTime)
+            epochTime += item["length"]*60
+            endTime = time.localtime(epochTime)
+            lives.append({"start": startTime, "end": endTime, "title": "%s - %s" % (item["title"], item["titlePart"]), "channel": item["epgChannel"], "thumb": "%s/%s" % (base_url, item["imageUrl"]), "plot": item["text"]})
+    sortedLives = sorted(lives, key=lambda x: x["start"])
+    for live in sortedLives:
+        addDirectoryItem("[COLOR yellow]%02d:%02d-%02d:%02d[/COLOR]: %s" % (live["start"].tm_hour, live["start"].tm_min, live["end"].tm_hour, live["end"].tm_min, live["title"]), "playlive&channel=%s" % live["channel"], live["thumb"], "", meta={"title": live["title"], "plot": live["plot"]}, isFolder=False)
+    endDirectory(type="tvshows")
+
+def playLive(channel):
+    data = json.loads(client.request(streamingJwtUrl % channel, cookie="jwt=%s" % jwtToken, headers=headers))
+    url = data["url"]
+    token = data["token"]
+    data = json.loads(client.request(url, post=token.encode("utf-8"), headers=headers))
+    url = "https:%s" % data["bitrates"]["hls"]
+    m3u_url = data['bitrates']['hls']
+    m3u_url = re.sub('^//', 'https://', m3u_url)
+    if control.setting("useisa") == "true":
+        item = control.item(path=m3u_url)
+        from inputstreamhelper import Helper
+        is_helper = Helper('hls')
+        if is_helper.check_inputstream():
+            if sys.version_info < (3, 0):  # if python version < 3 is safe to assume we are running on Kodi 18
+                item.setProperty('inputstreamaddon', 'inputstream.adaptive')   # compatible with Kodi 18 API
+            else:
+                item.setProperty('inputstream', 'inputstream.adaptive')  # compatible with recent builds Kodi 19 API
+            item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+    else:
+        from resources.lib import m3u8_parser
+        r = client.request(m3u_url, headers=headers)
+        root = os.path.dirname(m3u_url)
+        sources = m3u8_parser.parse(r)
+        try:
+            sources.sort(key=lambda x: int(x['resolution'].split('x')[0]), reverse=True)
+        except:
+            pass
+
+        auto_pick = control.setting('autopick') == '1'
+
+        if len(sources) == 1 or auto_pick == True:
+            source = sources[0]['uri']
+        else:
+            result = xbmcgui.Dialog().select(u'Min\u0151s\u00E9g', [str(source['resolution']) if 'resolution' in source else 'Unknown' for source in sources])
+            if result == -1:
+                source = sources[0]['uri']
+            else:
+                source = sources[result]['uri']
+        stream_url = root + '/' + source
+        item = control.item(path=stream_url)
+    control.resolve(int(sys.argv[1]), True, item)
 
 def apiSearchSeason(season):
     r = client.request("%s%s/search/%s" % (api_url, "/premium" if ispremium else "", param), cookie="jwt=%s" % jwtToken if jwtToken else None, headers=headers)
@@ -653,11 +713,16 @@ param = params.get('param')
 page = params.get('page')
 search = params.get('search')
 ispremium = True if params.get('ispremium') in ["true", "True"] else False
+channel = params.get('channel')
 
 if action == None:
     main_folders()
 elif action == 'musorok':
     musorok(musorokURL)
+elif action == 'elo':
+    elo()
+elif action == 'playlive':
+    playLive(channel)
 elif action == 'apisearch':
     apiSearch()
 elif action == 'apisearchseason':
