@@ -1,3 +1,6 @@
+V1.0.23
+- Csak a folyamatban lévő, illetve jövőbeni műsorok megjelenítése
+
 V1.0.22
 - Icon bugfix
 

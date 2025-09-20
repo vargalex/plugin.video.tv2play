@@ -391,11 +391,12 @@ def elo():
     lives = []
     for item in data:
         if item["live"]:
-            startTime = time.strptime(item["broadcastTime"][11:16], "%H:%M")
+            startTime = time.strptime(item["broadcastTime"], "%Y-%m-%dT%H:%M:%S")
             epochTime = time.mktime(startTime)
             epochTime += item["length"]*60
-            endTime = time.localtime(epochTime)
-            lives.append({"start": startTime, "end": endTime, "title": "%s - %s" % (item["title"], item["titlePart"]), "channel": item["epgChannel"], "thumb": "%s/%s" % (base_url, item["imageUrl"]), "plot": item["text"]})
+            if epochTime >= time.time():
+                endTime = time.localtime(epochTime)
+                lives.append({"start": startTime, "end": endTime, "title": "%s - %s" % (item["title"], item["titlePart"]), "channel": item["epgChannel"], "thumb": "%s/%s" % (base_url, item["imageUrl"]), "plot": item["text"]})
     sortedLives = sorted(lives, key=lambda x: x["start"])
     for live in sortedLives:
         addDirectoryItem("[COLOR yellow]%02d:%02d-%02d:%02d[/COLOR]: %s" % (live["start"].tm_hour, live["start"].tm_min, live["end"].tm_hour, live["end"].tm_min, live["title"]), "playlive&channel=%s" % live["channel"], live["thumb"], "", meta={"title": live["title"], "plot": live["plot"]}, isFolder=False)
