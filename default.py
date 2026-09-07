@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys, base64, time, locale, random, struct, socket
+import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys, base64, time, locale, random, struct, socket, threading
 from resources.lib import client, control
 from resources.lib.utils import py2_decode, safeopen
 
@@ -21,6 +21,7 @@ musorokURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?&rn=&cid
 searchURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?rn=&cid=&ts=%d&rd=0,TV2_W_SEARCH_RESULT,80,[*platform:web;*domain:tv2play;*query:#SEARCHSTRING#;*country:HU;*userAge:18;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
 epgURL = "%s/epg/data?date=%%s" % api_url
 streamingJwtUrl = "%s/premium/streaming-jwt?playerId=live/%%s" % api_url
+maxRibbonThreads = 8
 
 try:
     locale.setlocale(locale.LC_ALL, "hu_HU.UTF-8")
@@ -467,8 +468,18 @@ def apiSearchSeason(season):
                     plot = tab["showData"]["description"].encode('utf-8')
                 if thumb == '' and "imageUrl" in tab["showData"]:
                     thumb = "%s/%s" % (base_url, tab["showData"]["imageUrl"]) if "https://" not in tab["showData"]["imageUrl"] else tab["showData"]["imageUrl"]
-    for ribbon in ribbons:
-        r = client.request("%s/ribbons/%s" % (api_url, ribbon), cookie="jwt=%s" % jwtToken if jwtToken else None, headers=headers)
+    results = [None] * len(ribbons)
+
+    def fetchRibbon(i):
+        results[i] = client.request("%s/ribbons/%s" % (api_url, ribbons[i]), cookie="jwt=%s" % jwtToken if jwtToken else None, headers=dict(headers) if headers else None)
+    _t0 = time.time()
+    xbmc.log('TV2Play: for ciklus indul belepes', xbmc.LOGINFO)
+    for start in range(0, len(ribbons), maxRibbonThreads):
+        threads = [threading.Thread(target=fetchRibbon, args=(i,)) for i in range(start, min(start + maxRibbonThreads, len(ribbons)))]
+        for thread in threads: thread.start()
+        for thread in threads: thread.join()
+
+    for r in results:
         if r:
             data = json.loads(r)
             addDirectoryItem(data["title"].encode("utf-8"),
@@ -476,6 +487,7 @@ def apiSearchSeason(season):
                             thumb,
                             "DefaultFolder.png",
                             meta={'title': data["title"].encode("utf-8"), 'plot': plot})
+    xbmc.log("TV2Play: for ciklus vege. Időtartam: %.4f" % (time.time()-_t0), xbmc.LOGINFO)
     endDirectory(type="tvshows")
 
 def apiSearch():
