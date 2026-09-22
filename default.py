@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys, base64, time, locale, random, struct, socket, threading
 from resources.lib import client, control
-from resources.lib.utils import py2_decode, safeopen
+from resources.lib.utils import py2_decode, safeopen, py2_encode
 
 if sys.version_info[0] == 3:
     from urllib.parse import parse_qsl
@@ -368,23 +368,23 @@ def musorok(url):
         if "SEARCH_RESULT" in url:
             totalResults = 0
     if control.setting('programorder') == '1':
-        allItemsSorted=sorted(allItems, key=lambda k: locale.strxfrm("%s%s" % ("000" if k["contentType"] == "SHOW" else "001", (k["title"] if isinstance(k["title"], str) else k["title"].encode("utf-8")).lower())))
+        allItemsSorted=sorted(allItems, key=lambda k: locale.strxfrm("%s%s" % ("000" if k["contentType"] == "SHOW" else "001", (k["title"] if isinstance(k["title"], str) else py2_encode(k["title"])).lower())))
     else:
         allItemsSorted = allItems
     for item in allItemsSorted:
         if hasPremium or not "isPremium" in item or item["isPremium"] == "false":
             if item["contentType"] == "SHOW":
-                addDirectoryItem(item["title"].encode("utf-8"),
+                addDirectoryItem(py2_encode(item["title"]),
                                  "apisearch&param=%s&ispremium=%s" % (quote_plus(item["url"]), item["isPremium"] if "isPremium" in item else ""),
                                  ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
                                  "DefaultFolder.png",
-                                 meta={'title': item["title"].encode("utf-8"), 'plot': item["lead"].encode('utf-8') if "lead" in item else ''})
+                                 meta={'title': py2_encode(item["title"]), 'plot': py2_encode(item["lead"]) if "lead" in item else ''})
             else:
-                addDirectoryItem(item["title"].encode("utf-8"),
+                addDirectoryItem(py2_encode(item["title"]),
                                 "playvideo&param=%s&ispremium=%s" % (item["url"], item["isPremium"] if "isPremium" in item else ""),
                                 ("%s/%s" % (base_url, item["imageUrl"]) if "https://" not in item["imageUrl"] else item["imageUrl"]) if "imageUrl" in item else "",
                                 "DefaultFolder.png",
-                                meta={'title': item["title"].encode("utf-8"), 'duration': int(item["duration"]) if "duration" in item else 0, 'plot': item["lead"].encode('utf-8') if "lead" in item else ''}, isFolder=False)
+                                meta={'title': py2_encode(item["title"]), 'duration': int(item["duration"]) if "duration" in item else 0, 'plot': py2_encode(item["lead"]) if "lead" in item else ''}, isFolder=False)
     endDirectory(type="tvshows")
 
 def elo():
@@ -465,7 +465,7 @@ def apiSearchSeason(season):
                 ribbons += tab["ribbonIds"]
             if tab["tabType"] == 'SHOW_INFO':
                 if plot == '' and "description" in tab["showData"]:
-                    plot = tab["showData"]["description"].encode('utf-8')
+                    plot = py2_encode(tab["showData"]["description"])
                 if thumb == '' and "imageUrl" in tab["showData"]:
                     thumb = "%s/%s" % (base_url, tab["showData"]["imageUrl"]) if "https://" not in tab["showData"]["imageUrl"] else tab["showData"]["imageUrl"]
     results = [None] * len(ribbons)
@@ -482,11 +482,11 @@ def apiSearchSeason(season):
     for r in results:
         if r:
             data = json.loads(r)
-            addDirectoryItem(data["title"].encode("utf-8"),
+            addDirectoryItem(py2_encode(data["title"]),
                             "apiribbons&param=%s&page=0" % data["id"],
                             thumb,
                             "DefaultFolder.png",
-                            meta={'title': data["title"].encode("utf-8"), 'plot': plot})
+                            meta={'title': py2_encode(data["title"]), 'plot': plot})
     xbmc.log("TV2Play: for ciklus vege. Időtartam: %.4f" % (time.time()-_t0), xbmc.LOGINFO)
     endDirectory(type="tvshows")
 
@@ -495,7 +495,7 @@ def apiSearch():
     data = json.loads(r)
     if "seasonNumbers" in data and len(data["seasonNumbers"])>0:
         if "seo" in data and "description" in data["seo"] and data["seo"]["description"] != None:
-            plot = data["seo"]["description"].encode('utf-8')
+            plot = py2_encode(data["seo"]["description"])
         else:
             plot = ""
         for season in data["seasonNumbers"]:
@@ -515,7 +515,7 @@ def apiRibbons():
     dirType = 'videos'
     for card in data["cards"]:
         thumb = "%s/%s" % (base_url, card["imageUrl"]) if "https://" not in card["imageUrl"] else card["imageUrl"]
-        title = card["title"].encode('utf-8')
+        title = py2_encode(card["title"])
         if "contentLength" in card:
             plot = ""
             if control.setting('fillLead') == 'true':
@@ -544,7 +544,7 @@ def apiRibbons():
                                 "apisearch&param=%s" % quote_plus(card["slug"]), 
                                 thumb, 
                                 "DefaultFolder.png", 
-                                meta={'title': title, 'plot': card["lead"].encode('utf-8') if "lead" in card else ''})           
+                                meta={'title': title, 'plot': py2_encode(card["lead"]) if "lead" in card else ''})           
     r = client.request("%s/ribbons/%s/%d" % (api_url, param, int(page)+1), cookie="jwt=%s" % jwtToken if jwtToken else None, headers=headers)
     if r != None:
         addDirectoryItem(u'[I]K\u00F6vetkez\u0151 oldal >>[/I]', 'apiribbons&param=%s&page=%d' % (param, int(page)+1), '', 'DefaultFolder.png')

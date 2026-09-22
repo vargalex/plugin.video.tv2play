@@ -1,3 +1,6 @@
+V1.0.24~beta2
+- string UTF-8 encode csak python2 esetén
+
 V1.0.24~beta
 - Többszálú ribbon letöltés
 
