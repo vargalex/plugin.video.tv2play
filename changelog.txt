@@ -1,5 +1,6 @@
 V1.0.25
 - Bejelentkezés kóddal (Google / Facebook / Apple fiókkal is), a TV2 Play TV app párosítási módszerével
+- Fiók menüpont a főmenüben (név, bejelentkezés módja, prémium és Zero státusz)
 
 V1.0.24~beta2
 - string UTF-8 encode csak python2 esetén

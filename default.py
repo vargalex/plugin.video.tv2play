@@ -336,6 +336,8 @@ def main_folders():
     if hasPremium:
         addDirectoryItem("Élő", "elo", os.path.join(artPath, "live.png"), None)
     addDirectoryItem("Keresés", "search", "", "DefaultAddonsSearch.png")
+    if jwtToken:
+        addDirectoryItem("Fiók", 'account', "", "DefaultUser.png", isFolder=False, isPlayable=False)
     r = client.request("%s/channels" % api_url, headers=headers)
     channels = sorted(json.loads(r), key=lambda k:k["id"])
     for channel in channels:
@@ -612,7 +614,7 @@ def playVideo():
     except:
         xbmcgui.Dialog().notification("TV2 Play", "Hiba a forrás elérésekor! Nem található?", xbmcgui.NOTIFICATION_ERROR)
 
-def addDirectoryItem(name, query, thumb, icon, context=None, queue=False, isAction=True, isFolder=True, Fanart=None, meta=None):
+def addDirectoryItem(name, query, thumb, icon, context=None, queue=False, isAction=True, isFolder=True, Fanart=None, meta=None, isPlayable=True):
     url = '%s?action=%s' % (sysaddon, query) if isAction == True else query
     if thumb == '': thumb = icon
     cm = []
@@ -623,7 +625,7 @@ def addDirectoryItem(name, query, thumb, icon, context=None, queue=False, isActi
     item.setArt({'icon': icon, 'thumb': thumb, 'poster': thumb})
     if Fanart == None: Fanart = addonFanart
     item.setProperty('Fanart_Image', Fanart)
-    if isFolder == False: item.setProperty('IsPlayable', 'true')
+    if isFolder == False: item.setProperty('IsPlayable', str(isPlayable).lower())
     if not meta == None: item.setInfo(type='Video', infoLabels = meta)
     xbmcplugin.addDirectoryItem(handle=syshandle, url=url, listitem=item, isFolder=isFolder)
 
@@ -649,6 +651,10 @@ def doLogout():
     control.setSetting("email", "")
     control.setSetting("password", "")
 
+def refreshMainMenu():
+    if xbmc.getInfoLabel('Container.FolderPath').startswith(sysaddon):
+        xbmc.executebuiltin('Container.Update(%s,replace)' % sysaddon)
+
 def logout():
     if control.yesnoDialog("Valóban ki szeretne jelentkezni?") == 1:
         try:
@@ -656,6 +662,7 @@ def logout():
         except:
             pass
         doLogout()
+        refreshMainMenu()
 
 def login():
     loginData = json.dumps({"email": control.setting("email"), "password": control.setting("password"), "stayLoggedIn": True, "deviceToken": {"token": None, "platform": "web"}}).encode('utf-8')
@@ -729,6 +736,8 @@ def codeLogin():
     if jwtToken:
         control.setSetting("loggedIn", "true")
         control.setSetting("jwtToken", jwtToken)
+        control.setSetting("email", "")
+        control.setSetting("password", "")
         try:
             res = json.loads(client.request(userinfo_url, cookie="jwt=%s" % jwtToken, headers=headers))
             if res["success"]:
@@ -736,8 +745,41 @@ def codeLogin():
         except:
             pass
         xbmcgui.Dialog().ok("TV2 Play", "Sikeres bejelentkezés!")
+        refreshMainMenu()
     elif status == "EXPIRED" or elapsed >= expireSeconds:
         xbmcgui.Dialog().ok("TV2 Play", "A kód lejárt, kérlek próbáld újra!")
+
+def account():
+    try:
+        res = json.loads(client.request(userinfo_url, cookie="jwt=%s" % jwtToken, headers=headers))
+        if not res["success"]:
+            raise Exception()
+    except:
+        xbmcgui.Dialog().ok("TV2 Play", "Nem sikerült lekérni a fiókadatokat!")
+        return
+    control.setSetting("hasPremium", str(res["isPremium"]))
+    lines = []
+    name = " ".join([n for n in [res.get("firstName"), res.get("lastName")] if n])
+    if name:
+        lines.append("Név: %s" % name)
+    if res.get("socialProvider") and res["socialProvider"] != "EMAIL":
+        lines.append("Bejelentkezés: %s fiók" % res["socialProvider"].capitalize())
+    else:
+        lines.append("Bejelentkezés: e-mail cím és jelszó")
+        if res.get("email"):
+            lines.append("E-mail: %s" % res["email"])
+    if res.get("provider"):
+        lines.append("Szolgáltató: %s" % res["provider"])
+    lines.append("Prémium: %s" % ("[COLOR gold]igen[/COLOR]" if res.get("isPremium") else "nem"))
+    zero = "igen" if res.get("isZero") else "nem"
+    if res.get("isZero") and res.get("zeroExpiresAt"):
+        zero += " (lejár: %s)" % res["zeroExpiresAt"]
+    lines.append("Zero (reklámmentes): %s" % zero)
+    if res.get("isVoucherExpired"):
+        lines.append("[COLOR red]A voucher lejárt![/COLOR]")
+    if res.get("bankcardExpiresSoon"):
+        lines.append("[COLOR red]A bankkártya hamarosan lejár![/COLOR]")
+    xbmcgui.Dialog().textviewer("TV2 Play fiók", py2_encode("\n".join(lines)))
 
 def getJWTToken():
     jwtToken = control.setting("jwtToken")
@@ -797,6 +839,8 @@ elif action == 'logout':
     logout()
 elif action == 'codelogin':
     codeLogin()
+elif action == 'account':
+    account()
 elif action == 'drmSettings':
     xbmcaddon.Addon(id='inputstream.adaptive').openSettings()
 elif action == 'search':
