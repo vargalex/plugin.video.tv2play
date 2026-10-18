@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys, base64, time, locale, random, struct, socket, threading
+import xbmc, xbmcgui, xbmcaddon, re, xbmcplugin, json, os, sys, base64, time, locale, random, struct, socket, threading, uuid
 from resources.lib import client, control
 from resources.lib.utils import py2_decode, safeopen, py2_encode
 
@@ -21,6 +21,9 @@ musorokURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?&rn=&cid
 searchURL = "https://tv2-prod.d-saas.com/grrec-tv2-prod-war/JSServlet4?rn=&cid=&ts=%d&rd=0,TV2_W_SEARCH_RESULT,80,[*platform:web;*domain:tv2play;*query:#SEARCHSTRING#;*country:HU;*userAge:18;*pagingOffset:%d],[displayType;channel;title;itemId;duration;isExtra;ageLimit;showId;genre;availableFrom;director;isExclusive;lead;url;contentType;seriesTitle;availableUntil;showSlug;videoType;series;availableEpisode;imageUrl;totalEpisode;category;playerId;currentSeasonNumber;currentEpisodeNumber;part;isPremium]"
 epgURL = "%s/epg/data?date=%%s" % api_url
 streamingJwtUrl = "%s/premium/streaming-jwt?playerId=live/%%s" % api_url
+shortCodeUrl = "%s/tv/generate-shortcode?deviceId=%%s&deviceName=Kodi&provider=TELEKOM" % api_url
+shortCodeJwtUrl = "%s/tv/get-jwt-for-short-code?shortCode=%%s" % api_url
+shortCodePollSeconds = 5
 maxRibbonThreads = 8
 
 try:
@@ -671,32 +674,76 @@ def login():
         pass
     return jwtToken
 
-def getJWTToken():
-    if control.setting("email") and control.setting("password"):
-        jwtToken =  control.setting("jwtToken")
-        if len(jwtToken) > 0:
-            m = re.search(r'(.*)\.(.*)\.(.*)', base64.b64decode(jwtToken).decode("utf-8"))
-            if m:
-                errMsg = ""
-                try:
-                    errMsg = "TV2 Play: cannot base64 decode the group 2: %s" % m.group(2)
-                    decodedToken=base64.b64decode(m.group(2)+"===")
-                    if sys.version_info[0] == 3:
-                        errMsg = "TV2 Play: utf-8 decode error: %s" % decodedToken
-                        decodedToken = decodedToken.decode("utf-8", "ignore")
-                    errMsg = "TV2 Play: decodedToken is not a json object: %s" % decodedToken
-                    jsObj = json.loads(decodedToken)
-                    if "exp" in jsObj:
-                        if jsObj["exp"]-int(time.time())>0:
-                            return jwtToken
-                        else:
-                            xbmc.log("TV2 Play: jwtToken expired, request a new one.", xbmc.LOGINFO)
-                    else:
-                        xbmc.log("TV2 Play: match group 2 does not contains exp key: %s" % m.group(2), xbmc.LOGERROR)
-                except:
-                    xbmc.log(errMsg, xbmc.LOGERROR)
+def isTokenValid(jwtToken):
+    m = re.search(r'(.*)\.(.*)\.(.*)', base64.b64decode(jwtToken).decode("utf-8"))
+    if m:
+        errMsg = ""
+        try:
+            errMsg = "TV2 Play: cannot base64 decode the group 2: %s" % m.group(2)
+            decodedToken=base64.b64decode(m.group(2)+"===")
+            if sys.version_info[0] == 3:
+                errMsg = "TV2 Play: utf-8 decode error: %s" % decodedToken
+                decodedToken = decodedToken.decode("utf-8", "ignore")
+            errMsg = "TV2 Play: decodedToken is not a json object: %s" % decodedToken
+            jsObj = json.loads(decodedToken)
+            if "exp" in jsObj:
+                if jsObj["exp"]-int(time.time())>0:
+                    return True
+                else:
+                    xbmc.log("TV2 Play: jwtToken expired, request a new one.", xbmc.LOGINFO)
             else:
-                xbmc.log("TV2 Play: jwtToken not match to (.*)\\.(.*)\\.(.*). jwtToken: %s" % jwtToken, xbmc.LOGERROR)
+                xbmc.log("TV2 Play: match group 2 does not contains exp key: %s" % m.group(2), xbmc.LOGERROR)
+        except:
+            xbmc.log(errMsg, xbmc.LOGERROR)
+    else:
+        xbmc.log("TV2 Play: jwtToken not match to (.*)\\.(.*)\\.(.*). jwtToken: %s" % jwtToken, xbmc.LOGERROR)
+    return False
+
+def codeLogin():
+    try:
+        data = json.loads(client.request(shortCodeUrl % uuid.uuid4(), headers=headers))
+        shortCode = data["shortCode"]
+        expireSeconds = int(data["expireSeconds"])
+        url = data["url"]
+    except:
+        xbmcgui.Dialog().ok("TV2 Play", "Nem sikerült bejelentkezési kódot kérni!")
+        return
+    message = "Jelentkezz be egy böngészőben a tv2play.hu oldalon (Google / Facebook / Apple fiókkal is lehet), majd nyisd meg:\n[B]%s[/B]\nés írd be ezt a kódot: [B][COLOR gold]%s[/COLOR][/B]" % (py2_encode(url), py2_encode(shortCode))
+    dialog = xbmcgui.DialogProgress()
+    dialog.create("TV2 Play bejelentkezés kóddal", message)
+    jwtToken = ""
+    status = "PENDING"
+    elapsed = 0
+    while status == "PENDING" and elapsed < expireSeconds and not dialog.iscanceled():
+        dialog.update(100 * elapsed // expireSeconds, message)
+        xbmc.sleep(shortCodePollSeconds * 1000)
+        elapsed += shortCodePollSeconds
+        try:
+            data = json.loads(client.request(shortCodeJwtUrl % shortCode, headers=headers))
+            status = data["status"]
+            if status == "OK":
+                jwtToken = data["token"]
+        except:
+            pass
+    dialog.close()
+    if jwtToken:
+        control.setSetting("loggedIn", "true")
+        control.setSetting("jwtToken", jwtToken)
+        try:
+            res = json.loads(client.request(userinfo_url, cookie="jwt=%s" % jwtToken, headers=headers))
+            if res["success"]:
+                control.setSetting("hasPremium", str(res["isPremium"]))
+        except:
+            pass
+        xbmcgui.Dialog().ok("TV2 Play", "Sikeres bejelentkezés!")
+    elif status == "EXPIRED" or elapsed >= expireSeconds:
+        xbmcgui.Dialog().ok("TV2 Play", "A kód lejárt, kérlek próbáld újra!")
+
+def getJWTToken():
+    jwtToken = control.setting("jwtToken")
+    if len(jwtToken) > 0 and isTokenValid(jwtToken):
+        return jwtToken
+    if control.setting("email") and control.setting("password"):
         jwtToken = login()
         if jwtToken:
             control.setSetting("loggedIn", "true")
@@ -708,6 +755,8 @@ def getJWTToken():
             xbmcgui.Dialog().ok("TV2 Play", "Bejelentkezés sikerelen!")
         return jwtToken
     else:
+        if len(jwtToken) > 0:
+            xbmcgui.Dialog().ok("TV2 Play", "A bejelentkezés lejárt, kérlek jelentkezz be újra a beállításokban!")
         doLogout()
     return None
 
@@ -746,6 +795,8 @@ elif action == 'playvideo':
     playVideo()
 elif action == 'logout':
     logout()
+elif action == 'codelogin':
+    codeLogin()
 elif action == 'drmSettings':
     xbmcaddon.Addon(id='inputstream.adaptive').openSettings()
 elif action == 'search':

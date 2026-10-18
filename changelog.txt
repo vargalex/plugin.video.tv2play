@@ -1,3 +1,6 @@
+V1.0.25
+- Bejelentkezés kóddal (Google / Facebook / Apple fiókkal is), a TV2 Play TV app párosítási módszerével
+
 V1.0.24~beta2
 - string UTF-8 encode csak python2 esetén
 
