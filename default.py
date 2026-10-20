@@ -608,7 +608,7 @@ def playVideo():
                     source = sources[result]['uri']
             stream_url = root + '/' + source
             item = control.item(path=stream_url)
-        item.setArt({'icon': thumb, 'thumb': thumb})
+        if thumb: item.setArt({'icon': thumb, 'thumb': thumb})
         item.setInfo(type='Video', infoLabels = {'Title': title, 'Plot': plot})
         control.resolve(int(sys.argv[1]), True, item)
     except:
@@ -622,11 +622,11 @@ def addDirectoryItem(name, query, thumb, icon, context=None, queue=False, isActi
     if not context == None: cm.append((context[0].encode('utf-8'), 'RunPlugin(%s?action=%s)' % (sysaddon, context[1])))
     item = xbmcgui.ListItem(label=name)
     item.addContextMenuItems(cm)
-    item.setArt({'icon': icon, 'thumb': thumb, 'poster': thumb})
+    item.setArt(dict((k, v) for k, v in {'icon': icon, 'thumb': thumb, 'poster': thumb}.items() if v))
     if Fanart == None: Fanart = addonFanart
     item.setProperty('Fanart_Image', Fanart)
     if isFolder == False: item.setProperty('IsPlayable', str(isPlayable).lower())
-    if not meta == None: item.setInfo(type='Video', infoLabels = meta)
+    if not meta == None: item.setInfo(type='Video', infoLabels = dict((k, v) for k, v in meta.items() if v != None))
     xbmcplugin.addDirectoryItem(handle=syshandle, url=url, listitem=item, isFolder=isFolder)
 
 def endDirectory(type='addons'):

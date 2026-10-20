@@ -1,3 +1,6 @@
+V1.0.26
+- Kodi 22 bugfix
+
 V1.0.25
 - Bejelentkezés kóddal (Google / Facebook / Apple fiókkal is), a TV2 Play TV app párosítási módszerével
 - Fiók menüpont a főmenüben (név, bejelentkezés módja, prémium és Zero státusz)
